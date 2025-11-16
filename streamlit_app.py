@@ -445,13 +445,15 @@ if st.session_state.analysis_history:
                     with col_score1:
                         st.plotly_chart(
                             create_donut_chart(fit_score, "🎯 Job Fit Score"),
-                            use_container_width=True
+                            use_container_width=True,
+                            key=f"fit_chart_{idx}"
                         )
 
                     with col_score2:
                         st.plotly_chart(
                             create_donut_chart(overqualification_score, "⚡ Overqualification Score"),
-                            use_container_width=True
+                            use_container_width=True,
+                            key=f"overqual_chart_{idx}"
                         )
 
                     st.markdown("---")
