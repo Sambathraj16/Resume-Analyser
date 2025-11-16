@@ -192,7 +192,7 @@ with st.sidebar:
             key="sidebar_resume"
         )
 
-        if st.button("💾 Save Resume", type="primary", use_container_width=True):
+        if st.button("💾 Save Resume", type="primary", width="stretch", key="btn_save_resume"):
             if resume_input.strip():
                 st.session_state.resume_text = resume_input
                 st.session_state.resume_saved = True
@@ -207,17 +207,17 @@ with st.sidebar:
                 "Your Resume",
                 value=st.session_state.resume_text,
                 height=200,
-                key="resume_view"
+                key="resume_view_edit"
             )
 
             col_btn1, col_btn2 = st.columns(2)
             with col_btn1:
-                if st.button("💾 Update", type="primary", use_container_width=True):
+                if st.button("💾 Update", type="primary", width="stretch", key="btn_update_resume"):
                     st.session_state.resume_text = resume_edit
                     st.success("Resume updated!")
                     st.rerun()
             with col_btn2:
-                if st.button("🗑️ Clear", type="secondary", use_container_width=True):
+                if st.button("🗑️ Clear", type="secondary", width="stretch", key="btn_clear_resume"):
                     st.session_state.resume_saved = False
                     st.rerun()
 
@@ -237,7 +237,7 @@ with st.sidebar:
     st.markdown("---")
 
     # Clear history button
-    if st.button("🗑️ Clear Analysis History", type="secondary", use_container_width=True):
+    if st.button("🗑️ Clear Analysis History", type="secondary", width="stretch", key="btn_clear_history"):
         st.session_state.analysis_history = []
         st.rerun()
 
@@ -252,10 +252,11 @@ job_description = st.text_area(
     "Paste the job description you want to analyze",
     height=350,
     placeholder="Paste the complete job description here...\n\nInclude:\n- Job title and company\n- Required skills and qualifications\n- Responsibilities\n- Experience requirements\n- Any other relevant details",
-    help="Paste one job description at a time for detailed analysis"
+    help="Paste one job description at a time for detailed analysis",
+    key="job_description_input"
 )
 
-analyze_button = st.button("🔍 Analyze Match", type="primary", disabled=not job_description.strip(), use_container_width=False)
+analyze_button = st.button("🔍 Analyze Match", type="primary", disabled=not job_description.strip(), key="btn_analyze_match")
 
 # Analysis section
 if st.session_state.resume_saved and 'analyze_button' in locals() and analyze_button:
