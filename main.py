@@ -45,7 +45,7 @@ class ParseJobDescription(BaseModel):
   programming_languages:List=Field(description="Software languages company given")
   tools_and_technologies:List=Field(description="Tools and technologies company given")
   soft_skills:List=Field(description="Soft Skills company given")
-  responsibilities:Optional[str]=Field(description="responsibilities of given role")
+  responsibilities:Optional[List]=Field(description="list of responsibilities of given role")
   company_name:Optional[str]=Field(description="company name")
   job_location:Optional[str]=Field(description="job location")
 

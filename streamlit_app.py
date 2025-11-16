@@ -177,9 +177,8 @@ with st.sidebar:
     model_options = {
         "Llama 3.1 8B (Recommended)": "llama-3.1-8b-instant",
         "Llama 3.3 70B": "llama-3.3-70b-versatile",
-        "Meta 4-12B": "meta-llama/llama-4-scout-17b-16e-instruct",
-        "OpenAI GPT 20B": "openai/gpt-oss-20b",
-        "OpenAI GPT 120B":"openai/gpt-oss-120b"
+        "Meta 4-12B": "meta-llama/llama-guard-4-12b",
+        "OpenAI GPT OSS": "openai/gpt-oss-safeguard-20b"
     }
 
     selected_model_name = st.selectbox(
@@ -915,7 +914,12 @@ Provide a complete, ready-to-use resume in clean text format with proper section
                                 st.write(f"- {skill}")
 
                     st.markdown("**Responsibilities**")
-                    st.write(parsed_jd.get('responsibilities', 'N/A'))
+                    responsibilities = parsed_jd.get('responsibilities', [])
+                    if responsibilities and isinstance(responsibilities, list):
+                        for resp in responsibilities:
+                            st.write(f"• {resp}")
+                    else:
+                        st.write("Not specified")
                 else:
                     st.info("Parsed job description not available")
 
