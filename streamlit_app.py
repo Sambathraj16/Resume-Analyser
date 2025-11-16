@@ -417,6 +417,129 @@ if st.session_state.analysis_history:
         with st.expander(f"Analysis #{len(st.session_state.analysis_history) - idx} - {job_title}", expanded=False):
             result = analysis['result']
 
+            # Add "Generate Tailored Resume" button at top
+            col_btn1, col_btn2, col_btn3 = st.columns([1, 1, 1])
+            with col_btn2:
+                if st.button("✨ Generate Tailored Resume for This Job", type="primary", width="stretch", key=f"btn_generate_resume_{idx}"):
+                    st.session_state[f'show_tailored_resume_{idx}'] = True
+
+            # Display tailored resume if generated
+            if st.session_state.get(f'show_tailored_resume_{idx}', False):
+                st.markdown("---")
+                st.markdown("### 📝 Tailored Resume Generation")
+
+                with st.spinner("🤖 AI is crafting your perfect resume for this job... This may take a moment."):
+                    try:
+                        from langchain_groq import ChatGroq
+
+                        api_key = os.environ.get("GROQ_API_KEY", "")
+                        if api_key:
+                            llm = ChatGroq(model=st.session_state.llm_model)
+
+                            # Get job requirements
+                            jd_text = analysis.get('job_description', '')
+                            parsed_jd = result.get('parsed_job_description', {})
+
+                            # Get analysis insights
+                            final_decision = result.get('final_decision', '')
+                            decision_text = final_decision.content if hasattr(final_decision, 'content') else str(final_decision)
+
+                            skill_assessment = result.get('skill_assesment', '')
+                            skill_text = skill_assessment.content if hasattr(skill_assessment, 'content') else str(skill_assessment)
+
+                            # Create comprehensive prompt
+                            prompt = f"""You are an expert resume writer and ATS optimization specialist. Your task is to modify the candidate's resume to perfectly match this specific job while maintaining authenticity.
+
+**ORIGINAL RESUME:**
+{st.session_state.resume_text}
+
+**TARGET JOB:**
+Title: {job_title}
+Company: {parsed_jd.get('company_name', 'Not specified')}
+
+**JOB REQUIREMENTS:**
+{jd_text}
+
+**ANALYSIS INSIGHTS:**
+{decision_text}
+
+**SKILL GAPS IDENTIFIED:**
+{skill_text}
+
+**YOUR TASK:**
+Create a tailored resume that:
+
+1. **ATS Optimization:**
+   - Include exact keywords from job description
+   - Use standard section headings (Summary, Experience, Skills, Education)
+   - Avoid tables, graphics, or complex formatting
+   - Use bullet points with action verbs
+
+2. **Highlight Relevant Skills:**
+   - Emphasize skills matching job requirements
+   - Add relevant technical skills that candidate likely has but didn't mention
+   - Position most relevant skills prominently
+
+3. **Reframe Experience:**
+   - Keep all candidate's actual experience
+   - Reword descriptions to match job requirements
+   - Quantify achievements where possible
+   - Use job posting's language and terminology
+
+4. **Add Strategic Elements:**
+   - Professional summary tailored to this role
+   - Highlight projects/achievements relevant to this job
+   - Emphasize transferable skills
+
+5. **Maintain Authenticity:**
+   - Don't fabricate experience
+   - Don't add skills candidate doesn't have
+   - Only reframe and optimize what's already there
+
+**OUTPUT FORMAT:**
+Provide a complete, ready-to-use resume in clean text format with proper sections and formatting. Make it ATS-friendly and compelling.
+
+---
+[Start the resume here]
+"""
+
+                            response = llm.invoke(prompt)
+                            tailored_resume = response.content if hasattr(response, 'content') else str(response)
+
+                            # Display the tailored resume
+                            st.success("✅ Your tailored resume is ready!")
+
+                            st.markdown("#### 📄 Your Tailored Resume")
+                            st.text_area(
+                                "Copy this resume",
+                                value=tailored_resume,
+                                height=400,
+                                key=f"tailored_resume_text_{idx}"
+                            )
+
+                            # Download button
+                            st.download_button(
+                                label="⬇️ Download Tailored Resume",
+                                data=tailored_resume,
+                                file_name=f"tailored_resume_{job_title.replace(' ', '_')}.txt",
+                                mime="text/plain",
+                                key=f"download_resume_{idx}"
+                            )
+
+                            # Close button
+                            if st.button("✖️ Close", key=f"close_tailored_{idx}"):
+                                st.session_state[f'show_tailored_resume_{idx}'] = False
+                                st.rerun()
+
+                        else:
+                            st.error("Please enter your Groq API key in the sidebar!")
+
+                    except Exception as e:
+                        st.error(f"Error generating tailored resume: {str(e)}")
+                        st.exception(e)
+
+                st.markdown("---")
+
             # Create tabs for different sections
             tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
                 "📊 Overview & Scores",
