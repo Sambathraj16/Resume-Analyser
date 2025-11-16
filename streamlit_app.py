@@ -180,67 +180,82 @@ with st.sidebar:
 
     st.markdown("---")
 
-    # Instructions
-    st.subheader("How to use")
-    st.markdown("""
-    1. Enter your Groq API key
-    2. Paste your resume in the text area
-    3. Click 'Save Resume'
-    4. Paste job descriptions one by one
-    5. Click 'Analyze Match' to get insights
-    6. View analysis history below
-    """)
-
-    # Clear history button
-    if st.button("Clear Analysis History", type="secondary"):
-        st.session_state.analysis_history = []
-        st.rerun()
-
-# Main content area
-col1, col2 = st.columns([1, 1])
-
-with col1:
-    st.markdown('<div class="section-header">Your Resume</div>', unsafe_allow_html=True)
+    # Resume section in sidebar
+    st.subheader("📄 Your Resume")
 
     if not st.session_state.resume_saved:
         resume_input = st.text_area(
             "Paste your resume here",
-            height=300,
+            height=200,
             placeholder="Paste your complete resume text here...",
-            help="This will be saved and used for all job description comparisons"
+            help="This will be saved and used for all job description comparisons",
+            key="sidebar_resume"
         )
 
-        if st.button("Save Resume", type="primary"):
+        if st.button("💾 Save Resume", type="primary", use_container_width=True):
             if resume_input.strip():
                 st.session_state.resume_text = resume_input
                 st.session_state.resume_saved = True
                 st.rerun()
             else:
-                st.error("Please enter your resume before saving!")
+                st.error("Please enter your resume!")
     else:
-        st.markdown('<div class="success-box">Resume saved successfully!</div>', unsafe_allow_html=True)
+        st.success("✓ Resume saved successfully!")
 
-        with st.expander("View Saved Resume"):
-            st.text_area("Your Resume", value=st.session_state.resume_text, height=200, disabled=True)
+        with st.expander("👁️ View/Edit Resume"):
+            resume_edit = st.text_area(
+                "Your Resume",
+                value=st.session_state.resume_text,
+                height=200,
+                key="resume_view"
+            )
 
-        if st.button("Update Resume", type="secondary"):
-            st.session_state.resume_saved = False
-            st.rerun()
+            col_btn1, col_btn2 = st.columns(2)
+            with col_btn1:
+                if st.button("💾 Update", type="primary", use_container_width=True):
+                    st.session_state.resume_text = resume_edit
+                    st.success("Resume updated!")
+                    st.rerun()
+            with col_btn2:
+                if st.button("🗑️ Clear", type="secondary", use_container_width=True):
+                    st.session_state.resume_saved = False
+                    st.rerun()
 
-with col2:
-    st.markdown('<div class="section-header">Job Description</div>', unsafe_allow_html=True)
+    st.markdown("---")
 
-    if not st.session_state.resume_saved:
-        st.info("Please save your resume first before analyzing job descriptions.")
-    else:
-        job_description = st.text_area(
-            "Paste job description here",
-            height=300,
-            placeholder="Paste the job description you want to analyze...",
-            help="You can analyze multiple job descriptions one by one"
-        )
+    # Instructions
+    st.subheader("📖 How to use")
+    st.markdown("""
+    1. Enter your Groq API key
+    2. Select your preferred LLM model
+    3. Paste your resume and save it
+    4. Paste job descriptions in main area
+    5. Click 'Analyze Match' to get insights
+    6. Review detailed analysis in tabs
+    """)
 
-        analyze_button = st.button("Analyze Match", type="primary", disabled=not job_description.strip())
+    st.markdown("---")
+
+    # Clear history button
+    if st.button("🗑️ Clear Analysis History", type="secondary", use_container_width=True):
+        st.session_state.analysis_history = []
+        st.rerun()
+
+# Main content area
+st.markdown('<div class="section-header">📋 Job Description Analysis</div>', unsafe_allow_html=True)
+
+if not st.session_state.resume_saved:
+    st.info("👈 Please save your resume in the sidebar first before analyzing job descriptions.")
+    st.stop()
+
+job_description = st.text_area(
+    "Paste the job description you want to analyze",
+    height=350,
+    placeholder="Paste the complete job description here...\n\nInclude:\n- Job title and company\n- Required skills and qualifications\n- Responsibilities\n- Experience requirements\n- Any other relevant details",
+    help="Paste one job description at a time for detailed analysis"
+)
+
+analyze_button = st.button("🔍 Analyze Match", type="primary", disabled=not job_description.strip(), use_container_width=False)
 
 # Analysis section
 if st.session_state.resume_saved and 'analyze_button' in locals() and analyze_button:
@@ -281,13 +296,15 @@ if st.session_state.analysis_history:
             result = analysis['result']
 
             # Create tabs for different sections
-            tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+            tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8 = st.tabs([
                 "📊 Overview & Scores",
-                "💪 Strengths",
-                "⚠️ Weaknesses",
-                "🎯 Improvement Areas",
-                "📝 Detailed Analysis",
-                "📄 Parsed Data"
+                "🎯 Key Skills Required",
+                "💪 Your Strengths",
+                "⚠️ Your Weaknesses",
+                "📝 Resume Modifications",
+                "🔧 Improvement Areas",
+                "📈 Detailed Analysis",
+                "📄 Raw Data"
             ])
 
             with tab1:
@@ -325,6 +342,73 @@ if st.session_state.analysis_history:
                     st.info("Final decision not available")
 
             with tab2:
+                st.markdown("### 🎯 Key Skills Required by Employer")
+
+                if 'parsed_job_description' in result:
+                    parsed_jd = result['parsed_job_description']
+
+                    # Programming Languages
+                    st.markdown("#### 💻 Programming Languages")
+                    if parsed_jd.get('programming_languages'):
+                        cols = st.columns(3)
+                        for idx, lang in enumerate(parsed_jd['programming_languages']):
+                            with cols[idx % 3]:
+                                st.markdown(f"**{lang}**")
+                    else:
+                        st.info("No specific programming languages mentioned")
+
+                    st.markdown("---")
+
+                    # Technical Skills
+                    st.markdown("#### 🔧 Technical Skills Required")
+                    if parsed_jd.get('technical_skills'):
+                        cols = st.columns(2)
+                        for idx, skill in enumerate(parsed_jd['technical_skills']):
+                            with cols[idx % 2]:
+                                st.markdown(f"✓ {skill}")
+                    else:
+                        st.info("No specific technical skills mentioned")
+
+                    st.markdown("---")
+
+                    # Tools and Technologies
+                    st.markdown("#### 🛠️ Tools & Technologies")
+                    if parsed_jd.get('tools_and_technologies'):
+                        cols = st.columns(3)
+                        for idx, tool in enumerate(parsed_jd['tools_and_technologies']):
+                            with cols[idx % 3]:
+                                st.markdown(f"⚙️ {tool}")
+                    else:
+                        st.info("No specific tools mentioned")
+
+                    st.markdown("---")
+
+                    # Soft Skills
+                    st.markdown("#### 🤝 Soft Skills Expected")
+                    if parsed_jd.get('soft_skills'):
+                        cols = st.columns(2)
+                        for idx, skill in enumerate(parsed_jd['soft_skills']):
+                            with cols[idx % 2]:
+                                st.markdown(f"• {skill}")
+                    else:
+                        st.info("No specific soft skills mentioned")
+
+                    st.markdown("---")
+
+                    # Experience and Education
+                    col_req1, col_req2 = st.columns(2)
+                    with col_req1:
+                        st.markdown("#### 📚 Education Required")
+                        st.info(parsed_jd.get('education', 'Not specified'))
+
+                    with col_req2:
+                        st.markdown("#### ⏱️ Experience Required")
+                        st.info(parsed_jd.get('years_of_experience', 'Not specified'))
+
+                else:
+                    st.warning("Job description data not available")
+
+            with tab3:
                 st.markdown("### 💪 Your Strengths")
 
                 strengths_list = []
@@ -332,7 +416,7 @@ if st.session_state.analysis_history:
                 # Get from parsed resume
                 if 'parsed_resume' in result and result['parsed_resume'].get('strengths'):
                     strengths_text = result['parsed_resume']['strengths']
-                    st.markdown("#### Identified Strengths")
+                    st.markdown("#### 🌟 Identified Strengths")
                     st.success(strengths_text)
 
                 # Get from final decision
@@ -341,37 +425,112 @@ if st.session_state.analysis_history:
                     strengths_from_decision = parse_list_from_text(decision_text, ['strength', 'strong', 'advantage'])
 
                     if strengths_from_decision:
-                        st.markdown("#### Key Advantages for This Role")
+                        st.markdown("---")
+                        st.markdown("#### ✨ Key Advantages for This Role")
                         for strength in strengths_from_decision:
-                            st.markdown(f"✅ {strength}")
+                            st.markdown(f"✅ **{strength}**")
 
                 if not strengths_list and 'parsed_resume' not in result:
                     st.info("No specific strengths identified")
 
-            with tab3:
-                st.markdown("### ⚠️ Areas of Concern")
+            with tab4:
+                st.markdown("### ⚠️ Your Weaknesses & Areas of Concern")
 
                 # Get from parsed resume
                 if 'parsed_resume' in result and result['parsed_resume'].get('weaknesses'):
                     weaknesses_text = result['parsed_resume']['weaknesses']
-                    st.markdown("#### Identified Weaknesses")
+                    st.markdown("#### 🔍 General Weaknesses Identified")
                     st.warning(weaknesses_text)
 
                 # Get from final decision
                 if 'final_decision' in result:
                     decision_text = result['final_decision'].content if hasattr(result['final_decision'], 'content') else str(result['final_decision'])
-                    weaknesses_from_decision = parse_list_from_text(decision_text, ['weakness', 'weak', 'gap', 'concern', 'lack'])
+                    weaknesses_from_decision = parse_list_from_text(decision_text, ['weakness', 'weak', 'gap', 'concern', 'lack', 'missing'])
 
                     if weaknesses_from_decision:
-                        st.markdown("#### Specific Gaps for This Role")
+                        st.markdown("---")
+                        st.markdown("#### 🎯 Specific Gaps for This Role")
                         for weakness in weaknesses_from_decision:
-                            st.markdown(f"⚠️ {weakness}")
+                            st.markdown(f"⚠️ **{weakness}**")
 
                 if 'parsed_resume' not in result or not result['parsed_resume'].get('weaknesses'):
-                    st.info("No specific weaknesses identified")
+                    if not weaknesses_from_decision:
+                        st.success("✓ No significant weaknesses identified!")
 
-            with tab4:
-                st.markdown("### 🎯 Recommended Improvement Areas")
+            with tab5:
+                st.markdown("### 📝 Resume Modification Suggestions")
+
+                if 'final_decision' in result:
+                    decision_text = result['final_decision'].content if hasattr(result['final_decision'], 'content') else str(result['final_decision'])
+
+                    # Look for resume enhancement/modification suggestions
+                    modifications = parse_list_from_text(
+                        decision_text,
+                        ['resume', 'modify', 'add', 'highlight', 'emphasize', 'include', 'showcase']
+                    )
+
+                    if modifications:
+                        st.markdown("#### ✏️ Recommended Changes to Your Resume")
+                        for i, mod in enumerate(modifications, 1):
+                            st.markdown(f"**{i}.** {mod}")
+                    else:
+                        # Try to extract any modification-related content
+                        lines = decision_text.split('\n')
+                        mod_section = []
+                        capture = False
+
+                        for line in lines:
+                            if any(keyword in line.lower() for keyword in ['resume', 'cv', 'modify', 'enhance your', 'update your']):
+                                capture = True
+                            if capture and line.strip():
+                                mod_section.append(line)
+                            if capture and len(mod_section) > 5:
+                                break
+
+                        if mod_section:
+                            st.markdown("#### ✏️ Resume Enhancement Recommendations")
+                            st.markdown('\n'.join(mod_section))
+                        else:
+                            st.info("No specific resume modifications suggested")
+
+                    st.markdown("---")
+
+                    # Skills to highlight
+                    st.markdown("#### 🌟 Skills to Highlight More Prominently")
+                    if 'parsed_resume' in result and 'parsed_job_description' in result:
+                        resume_skills = set(result['parsed_resume'].get('technical_skills', []))
+                        jd_skills = set(result['parsed_job_description'].get('technical_skills', []))
+
+                        matching_skills = resume_skills.intersection(jd_skills)
+
+                        if matching_skills:
+                            st.success("These skills match the job requirements - make sure they're prominent in your resume:")
+                            cols = st.columns(2)
+                            for idx, skill in enumerate(matching_skills):
+                                with cols[idx % 2]:
+                                    st.markdown(f"⭐ **{skill}**")
+                        else:
+                            st.info("Consider adding relevant skills mentioned in the job description")
+
+                    st.markdown("---")
+
+                    # Projects to emphasize
+                    st.markdown("#### 💼 Experience/Projects to Emphasize")
+                    if 'skill_assesment' in result:
+                        skill_text = result['skill_assesment'].content if hasattr(result['skill_assesment'], 'content') else str(result['skill_assesment'])
+                        relevant_exp = parse_list_from_text(skill_text, ['experience', 'project', 'emphasize', 'highlight', 'relevant'])
+
+                        if relevant_exp:
+                            for exp in relevant_exp:
+                                st.markdown(f"📌 {exp}")
+                        else:
+                            st.info("Review your projects and emphasize those most relevant to this role")
+
+                else:
+                    st.warning("Analysis data not available")
+
+            with tab6:
+                st.markdown("### 🔧 Recommended Improvement Areas")
 
                 if 'final_decision' in result:
                     decision_text = result['final_decision'].content if hasattr(result['final_decision'], 'content') else str(result['final_decision'])
@@ -379,11 +538,11 @@ if st.session_state.analysis_history:
                     # Extract improvement recommendations
                     improvements = parse_list_from_text(
                         decision_text,
-                        ['recommendation', 'improve', 'enhance', 'focus', 'develop', 'should', 'consider']
+                        ['recommendation', 'improve', 'enhance', 'focus', 'develop', 'should', 'consider', 'work on']
                     )
 
                     if improvements:
-                        st.markdown("#### Actionable Steps")
+                        st.markdown("#### 🎯 Actionable Steps to Improve")
                         for i, improvement in enumerate(improvements, 1):
                             st.markdown(f"**{i}.** {improvement}")
                     else:
@@ -406,22 +565,25 @@ if st.session_state.analysis_history:
                 # Skills gap from skill assessment
                 if 'skill_assesment' in result:
                     st.markdown("---")
-                    st.markdown("#### Skills to Develop")
+                    st.markdown("#### 📚 Skills to Develop")
                     skill_text = result['skill_assesment'].content if hasattr(result['skill_assesment'], 'content') else str(result['skill_assesment'])
-                    skill_gaps = parse_list_from_text(skill_text, ['gap', 'missing', 'need', 'lack', 'should learn'])
+                    skill_gaps = parse_list_from_text(skill_text, ['gap', 'missing', 'need', 'lack', 'should learn', 'acquire'])
 
                     if skill_gaps:
-                        for gap in skill_gaps:
-                            st.markdown(f"📚 {gap}")
+                        cols = st.columns(2)
+                        for idx, gap in enumerate(skill_gaps):
+                            with cols[idx % 2]:
+                                st.markdown(f"📖 {gap}")
 
-            with tab5:
-                st.markdown("### 📝 Detailed Analysis")
+            with tab7:
+                st.markdown("### 📈 Detailed Analysis")
 
                 # Skills Assessment
                 st.markdown("#### 🔧 Skills Assessment")
                 if 'skill_assesment' in result:
                     skill_text = result['skill_assesment'].content if hasattr(result['skill_assesment'], 'content') else str(result['skill_assesment'])
-                    st.write(skill_text)
+                    with st.expander("View Full Skills Assessment", expanded=False):
+                        st.write(skill_text)
                 else:
                     st.info("Skills assessment not available")
 
@@ -431,11 +593,12 @@ if st.session_state.analysis_history:
                 st.markdown("#### 💼 Experience Assessment")
                 if 'experience_assesment' in result:
                     exp_text = result['experience_assesment'].content if hasattr(result['experience_assesment'], 'content') else str(result['experience_assesment'])
-                    st.write(exp_text)
+                    with st.expander("View Full Experience Assessment", expanded=False):
+                        st.write(exp_text)
                 else:
                     st.info("Experience assessment not available")
 
-            with tab6:
+            with tab8:
                 st.markdown("### 📄 Parsed Data")
 
                 # Parsed Resume
