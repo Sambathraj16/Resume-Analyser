@@ -177,8 +177,9 @@ with st.sidebar:
     model_options = {
         "Llama 3.1 8B (Recommended)": "llama-3.1-8b-instant",
         "Llama 3.3 70B": "llama-3.3-70b-versatile",
-        "Meta 4-12B": "meta-llama/llama-guard-4-12b",
-        "OpenAI GPT OSS": "openai/gpt-oss-safeguard-20b"
+        "Meta 4-12B": "meta-llama/llama-4-scout-17b-16e-instruct",
+        "OpenAI GPT 20B": "openai/gpt-oss-20b",
+        "OpenAI GPT 120B":"openai/gpt-oss-120b"
     }
 
     selected_model_name = st.selectbox(
