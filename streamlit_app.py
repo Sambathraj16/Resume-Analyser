@@ -133,9 +133,23 @@ if 'analysis_history' not in st.session_state:
     st.session_state.analysis_history = []
 if 'llm_model' not in st.session_state:
     st.session_state.llm_model = "llama-3.1-70b-versatile"
+if 'all_improvements' not in st.session_state:
+    st.session_state.all_improvements = []
+if 'job_titles_analyzed' not in st.session_state:
+    st.session_state.job_titles_analyzed = []
+if 'show_consolidated' not in st.session_state:
+    st.session_state.show_consolidated = False
 
 # Header
 st.markdown('<div class="main-header">Resume-Job Description Matcher</div>', unsafe_allow_html=True)
+
+# Consolidated Improvements Button at Top
+if len(st.session_state.all_improvements) > 0:
+    col_top1, col_top2, col_top3 = st.columns([2, 1, 2])
+    with col_top2:
+        if st.button("📊 View Consolidated Improvements", type="primary", width="stretch", key="btn_consolidated"):
+            st.session_state.show_consolidated = True
+
 st.markdown("---")
 
 # Sidebar for configuration
@@ -229,17 +243,101 @@ with st.sidebar:
     1. Enter your Groq API key
     2. Select your preferred LLM model
     3. Paste your resume and save it
-    4. Paste job descriptions in main area
-    5. Click 'Analyze Match' to get insights
-    6. Review detailed analysis in tabs
+    4. Paste job descriptions one by one
+    5. Click 'Analyze Match' for each job
+    6. After analyzing multiple jobs, click **'View Consolidated Improvements'** at top
+    7. Get prioritized, crisp recommendations!
     """)
+
+    st.markdown("---")
+
+    # Stats
+    if len(st.session_state.job_titles_analyzed) > 0:
+        st.subheader("📈 Analysis Stats")
+        st.metric("Jobs Analyzed", len(st.session_state.job_titles_analyzed))
+        with st.expander("View Analyzed Jobs"):
+            for i, title in enumerate(st.session_state.job_titles_analyzed, 1):
+                st.write(f"{i}. {title}")
 
     st.markdown("---")
 
     # Clear history button
     if st.button("🗑️ Clear Analysis History", type="secondary", width="stretch", key="btn_clear_history"):
         st.session_state.analysis_history = []
+        st.session_state.all_improvements = []
+        st.session_state.job_titles_analyzed = []
         st.rerun()
+
+# Display Consolidated Improvements if requested
+if st.session_state.show_consolidated and len(st.session_state.all_improvements) > 0:
+    st.markdown("## 🎯 Consolidated Improvement Recommendations")
+    st.markdown(f"*Based on analysis of {len(st.session_state.job_titles_analyzed)} job description(s)*")
+
+    with st.spinner("Analyzing all improvements and identifying top priorities..."):
+        try:
+            from langchain_groq import ChatGroq
+
+            # Get API key
+            api_key = os.environ.get("GROQ_API_KEY", "")
+
+            if api_key:
+                llm = ChatGroq(model=st.session_state.llm_model)
+
+                # Prepare all improvements text
+                improvements_text = "\n\n".join([
+                    f"Job {i+1} ({title}):\n{imp}"
+                    for i, (title, imp) in enumerate(zip(st.session_state.job_titles_analyzed, st.session_state.all_improvements))
+                ])
+
+                prompt = f"""You are analyzing improvement recommendations from multiple job description analyses.
+
+Below are improvement areas identified for a candidate across {len(st.session_state.job_titles_analyzed)} different job descriptions:
+
+{improvements_text}
+
+Your task:
+1. Identify the MOST FREQUENTLY mentioned improvements (appearing in multiple job analyses)
+2. Identify the MOST CRITICAL improvements (highest impact on career growth)
+3. Identify QUICK WINS (easier to implement but valuable)
+4. Consolidate similar recommendations into single, actionable items
+
+Provide output in this exact format:
+
+### 🔥 HIGHEST PRIORITY (Most Frequent & Critical)
+- [List 3-5 most important improvements that appear frequently]
+
+### ⚡ QUICK WINS (High Impact, Easier to Achieve)
+- [List 3-4 improvements that are easier to implement]
+
+### 📚 SKILL DEVELOPMENT (Long-term Focus)
+- [List 3-4 skills to develop over time]
+
+### 💡 STRATEGIC RECOMMENDATIONS
+- [2-3 strategic career moves or positioning improvements]
+
+Keep each point crisp, actionable, and specific. Focus on what matters most.
+"""
+
+                response = llm.invoke(prompt)
+                result_text = response.content if hasattr(response, 'content') else str(response)
+
+                # Display results
+                st.markdown(result_text)
+
+                # Add close button
+                col_close1, col_close2, col_close3 = st.columns([2, 1, 2])
+                with col_close2:
+                    if st.button("✖️ Close", key="btn_close_consolidated", width="stretch"):
+                        st.session_state.show_consolidated = False
+                        st.rerun()
+
+            else:
+                st.error("Please enter your Groq API key in the sidebar!")
+
+        except Exception as e:
+            st.error(f"Error generating consolidated improvements: {str(e)}")
+
+    st.markdown("---")
 
 # Main content area
 st.markdown('<div class="section-header">📋 Job Description Analysis</div>', unsafe_allow_html=True)
@@ -275,13 +373,34 @@ if st.session_state.resume_saved and 'analyze_button' in locals() and analyze_bu
                 # Run the workflow
                 result = model.invoke(input_state)
 
+                # Extract job title for tracking
+                job_title = "Unknown Position"
+                if 'parsed_job_description' in result and result['parsed_job_description'].get('job_title'):
+                    job_title = result['parsed_job_description']['job_title']
+
+                # Extract improvements for consolidation
+                improvements_text = ""
+                if 'final_decision' in result:
+                    decision_text = result['final_decision'].content if hasattr(result['final_decision'], 'content') else str(result['final_decision'])
+                    improvements_text += f"Final Decision Recommendations:\n{decision_text}\n\n"
+
+                if 'skill_assesment' in result:
+                    skill_text = result['skill_assesment'].content if hasattr(result['skill_assesment'], 'content') else str(result['skill_assesment'])
+                    improvements_text += f"Skills Assessment:\n{skill_text}\n\n"
+
+                # Store improvements
+                st.session_state.all_improvements.append(improvements_text)
+                st.session_state.job_titles_analyzed.append(job_title)
+
                 # Store in history
                 st.session_state.analysis_history.insert(0, {
                     'job_description': job_description[:200] + "..." if len(job_description) > 200 else job_description,
-                    'result': result
+                    'result': result,
+                    'job_title': job_title
                 })
 
-                st.success("Analysis completed successfully!")
+                st.success(f"✅ Analysis completed! Improvements saved for '{job_title}'")
+                st.info("💡 Analyze more jobs to get consolidated improvement recommendations")
 
             except Exception as e:
                 st.error(f"An error occurred during analysis: {str(e)}")
@@ -290,10 +409,12 @@ if st.session_state.resume_saved and 'analyze_button' in locals() and analyze_bu
 # Display analysis results
 if st.session_state.analysis_history:
     st.markdown("---")
-    st.markdown('<div class="section-header">Analysis Results</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-header">📊 Individual Analysis Results</div>', unsafe_allow_html=True)
+    st.info("👇 Click on any analysis below to view detailed results")
 
     for idx, analysis in enumerate(st.session_state.analysis_history):
-        with st.expander(f"Analysis #{len(st.session_state.analysis_history) - idx} - {analysis['job_description'][:100]}...", expanded=(idx == 0)):
+        job_title = analysis.get('job_title', 'Unknown Position')
+        with st.expander(f"Analysis #{len(st.session_state.analysis_history) - idx} - {job_title}", expanded=False):
             result = analysis['result']
 
             # Create tabs for different sections
